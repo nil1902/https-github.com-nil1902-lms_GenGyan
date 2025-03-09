@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/use-toast";
-import { updatePassword } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { updatePassword } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -23,14 +24,37 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionCode, setActionCode] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if we have a valid hash in the URL
-    const hash = window.location.hash.substring(1);
-    if (!hash) {
+    // Get the action code from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("oobCode");
+
+    if (!code) {
       navigate("/login");
+      return;
     }
-  }, [navigate]);
+
+    setActionCode(code);
+
+    // Verify the password reset code is valid
+    const verifyCode = async () => {
+      try {
+        await verifyPasswordResetCode(auth, code);
+      } catch (error) {
+        console.error("Invalid or expired action code", error);
+        toast({
+          title: "Invalid reset link",
+          description: "This password reset link is invalid or has expired.",
+          variant: "destructive",
+        });
+        navigate("/login");
+      }
+    };
+
+    verifyCode();
+  }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,21 +65,46 @@ export default function ResetPassword() {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await updatePassword(password);
+      if (!actionCode) {
+        throw new Error("Reset code not found");
+      }
+
+      // Complete the password reset process
+      await confirmPasswordReset(auth, actionCode, password);
+
       toast({
         title: "Password updated",
-        description: "Your password has been successfully updated",
+        description:
+          "Your password has been successfully updated. You can now log in with your new password.",
       });
       navigate("/login");
     } catch (error: any) {
-      setError(error.message || "Failed to update password");
+      let errorMessage;
+      if (error.code === "auth/weak-password") {
+        errorMessage =
+          "Password is too weak. Please use at least 6 characters.";
+      } else if (error.code === "auth/expired-action-code") {
+        errorMessage =
+          "This password reset link has expired. Please request a new one.";
+      } else if (error.code === "auth/invalid-action-code") {
+        errorMessage =
+          "This password reset link is invalid. Please request a new one.";
+      } else {
+        errorMessage = error.message || "Failed to update password";
+      }
+
+      setError(errorMessage);
       toast({
         title: "Password update failed",
-        description:
-          error.message || "There was an error updating your password",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -95,6 +144,7 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={6}
                 />
               </div>
               <div className="space-y-2">
@@ -105,7 +155,11 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  minLength={6}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
               </div>
             </CardContent>
             <CardFooter>

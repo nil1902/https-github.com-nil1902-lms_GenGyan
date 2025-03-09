@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
+import { auth } from "@/lib/firebase";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -45,8 +45,7 @@ export default function Login() {
   // Check if we have an active session
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      if (auth.currentUser) {
         navigate("/dashboard");
       }
     };
@@ -83,8 +82,15 @@ export default function Login() {
       ) {
         errorMessage =
           "Network error. Please check your internet connection and try again.";
-      } else if (error.message?.includes("Invalid login credentials")) {
+      } else if (error.code === "auth/invalid-credential") {
         errorMessage = "Invalid email or password";
+      } else if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (error.code === "auth/wrong-password") {
+        errorMessage = "Incorrect password";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage =
+          "Too many failed login attempts. Please try again later.";
       } else {
         errorMessage =
           error.message || "Please check your credentials and try again";
@@ -131,15 +137,18 @@ export default function Login() {
       console.error("Registration error:", error);
 
       // Handle specific error messages
-      let errorMessage =
-        error.message || "There was an error creating your account";
-
-      if (errorMessage.includes("User already registered")) {
+      let errorMessage;
+      if (error.code === "auth/email-already-in-use") {
         errorMessage =
           "This email is already registered. Please log in instead.";
-      } else if (errorMessage.includes("password")) {
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address format.";
+      } else if (error.code === "auth/weak-password") {
         errorMessage =
-          "Password must be at least 6 characters long and contain letters and numbers.";
+          "Password is too weak. Please use at least 6 characters.";
+      } else {
+        errorMessage =
+          error.message || "There was an error creating your account";
       }
 
       setError(errorMessage);
@@ -167,11 +176,20 @@ export default function Login() {
       });
       setShowResetForm(false);
     } catch (error: any) {
-      setError(error.message || "There was an error sending the reset email");
+      let errorMessage;
+      if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address format.";
+      } else if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email.";
+      } else {
+        errorMessage =
+          error.message || "There was an error sending the reset email";
+      }
+
+      setError(errorMessage);
       toast({
         title: "Password reset failed",
-        description:
-          error.message || "There was an error sending the reset email",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
@@ -5,8 +6,20 @@ import { RecommendedCourses } from "@/components/dashboard/RecommendedCourses";
 import { NotificationsList } from "@/components/dashboard/NotificationsList";
 import { UpcomingSessionsCard } from "@/components/dashboard/UpcomingSessionsCard";
 import { BookOpen, Clock, Award, TrendingUp } from "lucide-react";
+import { auth } from "@/lib/firebase";
 
 export default function Dashboard() {
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    // Update user state when auth state changes
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      setUser(firebaseUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const enrolledCourses = [
     {
       id: "1",
@@ -37,7 +50,9 @@ export default function Dashboard() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">Welcome Back, John!</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          Welcome Back, {user?.displayName || "User"}!
+        </h1>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
