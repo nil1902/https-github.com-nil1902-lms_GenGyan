@@ -3,15 +3,12 @@ import { Database } from "@/types/supabase";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-const timeout = parseInt(import.meta.env.VITE_SUPABASE_TIMEOUT || "30000");
-
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
   },
-  // Remove custom fetch with timeout that's causing the error
   global: {
     headers: {
       "x-application-name": "gyanGen",

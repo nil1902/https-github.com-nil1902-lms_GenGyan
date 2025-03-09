@@ -1,7 +1,7 @@
 import { Bell, MessageSquare, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Notification } from "@/types";
+import type { Notification } from "@/types";
 
 interface NotificationsListProps {
   notifications: Notification[];

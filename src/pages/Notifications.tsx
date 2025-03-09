@@ -6,7 +6,7 @@ import { Bell, MessageSquare, Info, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { useSupabaseMutation } from "@/hooks/useSupabaseMutation";
-import { Notification } from "@/types";
+import type { Notification } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Notifications() {
